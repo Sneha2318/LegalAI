@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LegalAI Resolver — AI-Powered Dispute Resolution</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+<style>
+  :root {
+    --navy:   #0b1f3a;
+    --blue:   #1859b8;
+    --cyan:   #13b8c8;
+    --green:  #14804a;
+    --red:    #c53b31;
+    --orange: #dc6d1e;
+    --gold:   #b88619;
+    --dark:   #142033;
+    --muted:  #61748f;
+    --lgrey:  #eef3f9;
+    --white:  #ffffff;
+    --cream:  #fbf7ef;
+    --line:   rgba(15, 42, 74, 0.10);
+    --shadow: 0 18px 50px rgba(13, 29, 55, 0.10);
+    --shadow-strong: 0 24px 70px rgba(13, 29, 55, 0.16);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Aptos, "Trebuchet MS", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(19,184,200,0.18), transparent 28%),
+      radial-gradient(circle at 85% 15%, rgba(184,134,25,0.14), transparent 22%),
+      linear-gradient(180deg, #f6f8fc 0%, #ecf1f8 52%, #f8fafc 100%);
+    color: var(--dark);
+    min-height: 100vh;
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.35) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px);
+    background-size: 34px 34px;
+    opacity: 0.25;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,0.5), transparent 85%);
+  }
+
+  /* ── Nav ──────────────────────────────────────── */
+  nav {
+    background: linear-gradient(135deg, rgba(11,31,58,0.96), rgba(24,89,184,0.88));
+    backdrop-filter: blur(18px);
+    padding: 0 28px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 10px 30px rgba(11,31,58,0.16);
+  }
+  .nav-brand {
+    color: #7ee6ef;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+  }
+  .nav-brand span { color: var(--white); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-user { color: #d2e6ff; font-size: 13px; }
+  .btn-nav {
+    background: linear-gradient(135deg, #81eef3, #f0d27b);
+    color: var(--navy);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(129,238,243,0.25);
+  }
+
+  /* ── Layout ───────────────────────────────────── */
+  .container { max-width: 1120px; margin: 0 auto; padding: 28px 18px 36px; }
+
+  /* ── Cards ────────────────────────────────────── */
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.86));
+    border: 1px solid rgba(255,255,255,0.7);
+    backdrop-filter: blur(14px);
+    border-radius: 22px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* ── Buttons ──────────────────────────────────── */
+  .btn {
+    display: inline-block;
+    padding: 12px 20px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    text-decoration: none;
+  }
+  .btn:hover { opacity: 0.96; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary  { background: linear-gradient(135deg, #7de7ef, #4bb9e8); color: var(--navy); box-shadow: 0 12px 24px rgba(19,184,200,0.24); }
+  .btn-navy     { background: linear-gradient(135deg, #11284b, #1d4f88); color: var(--white); box-shadow: 0 12px 24px rgba(11,31,58,0.18); }
+  .btn-green    { background: linear-gradient(135deg, #178d53, #28b36a); color: var(--white); box-shadow: 0 12px 24px rgba(20,128,74,0.22); }
+  .btn-red      { background: linear-gradient(135deg, #bf4138, #d86042); color: var(--white); box-shadow: 0 12px 24px rgba(197,59,49,0.18); }
+  .btn-gold     { background: linear-gradient(135deg, #c7951f, #e0b54d); color: var(--white); box-shadow: 0 12px 24px rgba(184,134,25,0.20); }
+  .btn-outline  {
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(19,184,200,0.28);
+    color: var(--blue);
+  }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  .btn-full { width: 100%; display: block; text-align: center; }
+
+  /* ── Forms ────────────────────────────────────── */
+  .form-group { margin-bottom: 14px; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(15,42,74,0.12);
+    border-radius: 14px;
+    font-size: 14px;
+    color: var(--dark);
+    background: rgba(255,255,255,0.92);
+    box-shadow: inset 0 1px 2px rgba(15,42,74,0.02);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: rgba(19,184,200,0.55);
+    box-shadow: 0 0 0 4px rgba(19,184,200,0.12);
+  }
+  textarea { resize: vertical; min-height: 120px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  /* ── Status badges ────────────────────────────── */
+  .badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-analyzing  { background: #FEF3C7; color: #92400E; }
+  .badge-analyzed   { background: #D1FAE5; color: #064E3B; }
+  .badge-negotiating { background: #e5f4ff; color: #0f4f8f; }
+  .badge-settled    { background: #D1FAE5; color: #065F46; }
+  .badge-escalated  { background: #FEE2E2; color: #7F1D1D; }
+  .badge-pending    { background: #E0F2FE; color: #0C4A6E; }
+
+  /* ── Stat cards ───────────────────────────────── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+  .stat-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,249,255,0.86));
+    border: 1px solid rgba(15,42,74,0.08);
+    border-radius: 18px;
+    padding: 20px 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 14px 26px rgba(15,42,74,0.08);
+    border-left: 0;
+  }
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--cyan), rgba(19,184,200,0.15));
+  }
+  .stat-val {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--navy);
+  }
+  .stat-lbl {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Alert ────────────────────────────────────── */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    box-shadow: 0 10px 25px rgba(15,42,74,0.06);
+  }
+  .alert-info    { background: linear-gradient(135deg, #edf9fb, #e3f2ff); color: #0C4A6E; border-left: 4px solid var(--cyan); }
+  .alert-success { background: linear-gradient(135deg, #ebfaef, #d7f6df); color: #064E3B; border-left: 4px solid var(--green); }
+  .alert-warn    { background: linear-gradient(135deg, #fff6df, #fff1cc); color: #92400E; border-left: 4px solid var(--gold); }
+  .alert-error   { background: linear-gradient(135deg, #fff0ef, #fee2e2); color: #7F1D1D; border-left: 4px solid var(--red); }
+
+  /* ── Steps indicator ──────────────────────────── */
+  .steps {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+    gap: 0;
+  }
+  .step-item {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+  .step-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--lgrey);
+    border: 2px solid #E2E8F0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .step-circle.active { background: var(--cyan); border-color: var(--cyan); color: var(--navy); }
+  .step-circle.done   { background: var(--green); border-color: var(--green); color: white; }
+  .step-label { font-size: 12px; color: var(--muted); margin-left: 8px; white-space: nowrap; }
+  .step-label.active { color: var(--navy); font-weight: 600; }
+  .step-line { flex: 1; height: 2px; background: #E2E8F0; margin: 0 8px; }
+
+  /* ── Progress bar ─────────────────────────────── */
+  .progress-wrap { background: #E2E8F0; border-radius: 4px; height: 6px; margin: 8px 0; }
+  .progress-bar  { height: 6px; border-radius: 4px; background: var(--cyan);
+                   transition: width 0.6s ease; }
+
+  /* ── Table ────────────────────────────────────── */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { background: var(--navy); color: white; padding: 10px 12px;
+             text-align: left; font-size: 11px; text-transform: uppercase;
+             letter-spacing: 0.5px; }
+  .tbl td { padding: 10px 12px; border-bottom: 1px solid #F1F5F9; }
+  .tbl tr:hover td { background: #F8FAFC; }
+
+  /* ── Sections ─────────────────────────────────── */
+  .section-title {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  /* ── Negotiation offer boxes ──────────────────── */
+  .offer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .offer-box {
+    background: linear-gradient(180deg, rgba(250,252,255,0.96), rgba(239,245,253,0.86));
+    border: 1px solid rgba(15,42,74,0.08);
+    border-radius: 18px;
+    padding: 16px;
+    text-align: center;
+  }
+  .offer-amount { font-size: 28px; font-weight: 700; color: var(--navy); }
+  .offer-label  { font-size: 11px; color: var(--muted); margin-top: 4px;
+                  text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .proposal-box {
+    background: radial-gradient(circle at top, rgba(126,230,239,0.20), transparent 32%), linear-gradient(135deg, #0f2749, #163b69 65%, #1d588f);
+    border-radius: 22px;
+    padding: 24px;
+    text-align: center;
+    margin: 16px 0;
+    box-shadow: var(--shadow-strong);
+  }
+  .proposal-amount { font-size: 36px; font-weight: 700; color: var(--cyan); }
+  .proposal-label  { font-size: 12px; color: #93C5FD; margin-bottom: 8px;
+                     text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ── Reasoning box ────────────────────────────── */
+  .reasoning-box {
+    background: linear-gradient(135deg, #1a345e, #214879);
+    border-radius: 18px;
+    padding: 14px;
+    margin: 12px 0;
+  }
+  .reasoning-box p { color: #BFDBFE; font-size: 13px; line-height: 1.6; }
+
+  /* ── Law tag ──────────────────────────────────── */
+  .law-tag {
+    display: inline-block;
+    background: #EDE9FE;
+    color: #4C1D95;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin: 2px;
+    font-weight: 600;
+  }
+
+  /* ── Screens ──────────────────────────────────── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Spinner ──────────────────────────────────── */
+  .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #E2E8F0;
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 20px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Consent box ──────────────────────────────── */
+  .consent-box {
+    background: linear-gradient(135deg, #fff9ef, #fff3d8);
+    border: 1px solid rgba(184,134,25,0.32);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 12px 24px rgba(184,134,25,0.10);
+  }
+  .consent-box label {
+    display: flex; align-items: flex-start;
+    gap: 10px; cursor: pointer;
+    text-transform: none; letter-spacing: 0;
+    font-size: 13px; color: var(--dark);
+    font-weight: normal;
+  }
+  .consent-box input[type="checkbox"] {
+    width: 18px; min-width: 18px; height: 18px;
+    margin-top: 1px; cursor: pointer;
+  }
+
+  /* ── Hidden ───────────────────────────────────── */
+  .hidden { display: none !important; }
+  .hero-panel {
+    background: radial-gradient(circle at top left, rgba(126,230,239,0.28), transparent 28%), linear-gradient(135deg, rgba(11,31,58,0.96), rgba(24,89,184,0.88));
+    color: white;
+    border-radius: 28px;
+    padding: 28px;
+    box-shadow: var(--shadow-strong);
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-panel::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .hero-kicker {
+    display: inline-block;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #dffcff;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .hero-title {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+  }
+  .hero-copy {
+    color: rgba(233,244,255,0.92);
+    font-size: 14px;
+    line-height: 1.7;
+    max-width: 680px;
+  }
+
+  @media (max-width: 640px) {
+    .form-row, .form-row-3, .offer-grid, .stat-grid {
+      grid-template-columns: 1fr;
+    }
+    .hero-title { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">LegalAI <span>Resolver</span></div>
+  <div class="nav-right">
+    <span class="nav-user" id="navUser"></span>
+    <button class="btn-nav hidden" id="btnLogout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════════
+     SCREEN 1 — LOGIN
+════════════════════════════════════════════════ -->
+<div class="screen active" id="screenLogin">
+<div class="container" style="max-width:480px;">
+  <div class="hero-panel" style="padding:24px 22px;">
+    <div class="hero-kicker">Pre-Litigation Resolution</div>
+    <h1 class="hero-title" style="font-size:30px;">LegalAI Resolver</h1>
+    <p class="hero-copy" style="font-size:13px;">
+      Turn a legal dispute into a structured negotiation with AI-driven analysis,
+      guided settlement strategy, and court-ready documents when needed.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Login / Register</div>
+
+    <!-- Step 1: Email -->
+    <div id="loginStep1">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="loginName" placeholder="Full name">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="requestOtp()">
+        Send Login Code →
+      </button>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="loginStep2" class="hidden">
+      <div class="alert alert-info">
+        A 6-digit code has been sent to <b id="otpEmailDisplay"></b>.
+        Valid for 10 minutes.
+      </div>
+      <div class="form-group">
+        <label>Enter Code</label>
+        <input type="text" id="otpInput" maxlength="6"
+               placeholder="123456" style="font-size:24px;letter-spacing:8px;text-align:center;">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" id="loginCity" placeholder="New Delhi">
+        </div>
+        <div class="form-group">
+          <label>State</label>
+          <input type="text" id="loginState" placeholder="Delhi">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Phone (optional)</label>
+        <input type="text" id="loginPhone" placeholder="9999999999">
+      </div>
+      <div class="consent-box">
+        <label>
+          <input type="checkbox" id="loginConsent">
+          <span>I consent to the processing of my personal data for dispute
+          resolution under India's Digital Personal Data Protection Act 2023.</span>
+        </label>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="verifyOtp()">
+        Verify &amp; Login →
+      </button>
+      <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="backToEmail()">
+        ← Change email
+      </button>
+    </div>
+
+    <div id="loginMsg" class="alert hidden" style="margin-top:12px;"></div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     SCREEN 2 — DASHBOARD
+════════════════════════════════════════════════ -->
+<div class="screen" id="screenDashboard">
+<div class="container">
+  <div class="hero-panel">
+    <div class="hero-kicker">Claimant Workspace</div>
+    <div class="hero-title">Settle Smarter Before Court</div>
+    <div class="hero-copy">
+      Review legal strengths, pressure points, negotiation progress, and generated documents
+      from one focused workspace built for practical dispute resolution.
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+      <div class="stat-val" id="statTotal">0</div>
+      <div class="stat-lbl">Total Cases</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--green);">
+      <div class="stat-val" id="statSettled">0</div>
+      <div class="stat-lbl">Settled</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--gold);">
+      <div class="stat-val" id="statPending">0</div>
+      <div class="stat-lbl">In Progress</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--red);">
+      <div class="stat-val" id="statEscalated">0</div>
+      <div class="stat-lbl">Escalated</div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h2 style="font-size:18px;color:var(--navy);">My Cases</h2>
+    <button class="btn btn-primary" onclick="showScreen('screenSubmit')">
+      + File New Case
+    </button>
+  </div>
+
+  <div class="card" id="caseListWrap">
+    <div id="caseList">
+      <div style="text-align:center;padding:40px;color:var(--muted);">
+        <div class="spinner"></div>
+        <p>Loading cases...</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     SCREEN 3 — SUBMIT CASE
+════════════════════════════════════════════════ -->
+<div class="screen" id="screenSubmit">
+<div class="container" style="max-width:760px;">
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <button class="btn btn-outline btn-sm" onclick="showScreen('screenDashboard')">
+      ← Back
+    </button>
+    <h2 style="font-size:18px;color:var(--navy);">File New Case</h2>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-circle active" id="step1Circle">1</div>
+      <span class="step-label active" id="step1Label">Describe Dispute</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-circle" id="step2Circle">2</div>
+      <span class="step-label" id="step2Label">Parties &amp; Details</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-circle" id="step3Circle">3</div>
+      <span class="step-label" id="step3Label">Review &amp; Submit</span>
+    </div>
+  </div>
+
+  <!-- Step 1 — Describe -->
+  <div id="submitStep1">
+    <div class="card">
+      <div class="card-title">Describe Your Dispute</div>
+      <div class="form-group">
+        <label>What happened? (50–5000 characters)</label>
+        <textarea id="disputeText" rows="7"
+          placeholder="Describe your dispute in plain English. Include: what happened, when it happened, how much money is involved, what evidence you have, and what outcome you want..."></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;" id="charCount">0 / 5000</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Approximate claim amount (Rs.)</label>
+          <input type="number" id="claimAmount" placeholder="45000 (leave blank if non-monetary)">
+        </div>
+        <div class="form-group">
+          <label>Incident date</label>
+          <input type="date" id="incidentDate">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="goToStep2()">
+        Continue →
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 2 — Parties -->
+  <div id="submitStep2" class="hidden">
+    <div class="card">
+      <div class="card-title">Your Details (Claimant)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Your Full Name</label>
+          <input type="text" id="claimantName" placeholder="Priya Sharma">
+        </div>
+        <div class="form-group">
+          <label>Your Email</label>
+          <input type="email" id="claimantEmail" placeholder="priya@email.com">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="claimantPhone" placeholder="9999999999">
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" id="claimantCity" placeholder="New Delhi">
+        </div>
+        <div class="form-group">
+          <label>State</label>
+          <input type="text" id="claimantState" placeholder="Delhi">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Respondent Details (Other Party)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Respondent Name</label>
+          <input type="text" id="respondentName" placeholder="Rajesh Kumar">
+        </div>
+        <div class="form-group">
+          <label>Respondent Email</label>
+          <input type="email" id="respondentEmail" placeholder="rajesh@email.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Respondent Type</label>
+          <select id="respondentType" onchange="toggleCompanyFields()">
+            <option value="individual">Individual Person</option>
+            <option value="company">Company / Organization</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Respondent Phone (optional)</label>
+          <input type="text" id="respondentPhone" placeholder="Optional">
+        </div>
+      </div>
+      <div id="companyFields" class="hidden">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" id="companyName" placeholder="TechCorp Pvt Ltd">
+          </div>
+          <div class="form-group">
+            <label>Company Registration (optional)</label>
+            <input type="text" id="companyReg" placeholder="CIN or GST">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-outline" onclick="goToStep1()">← Back</button>
+      <button class="btn btn-primary" onclick="goToStep3()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Step 3 — Review & Submit -->
+  <div id="submitStep3" class="hidden">
+    <div class="card">
+      <div class="card-title">Review Your Case</div>
+
+      <div id="reviewContent" style="font-size:13px;line-height:1.8;"></div>
+      <div style="margin-top:16px;padding:16px;border:1px solid #E2E8F0;border-radius:16px;background:rgba(255,255,255,0.72);">
+        <div class="section-title">Evidence Upload</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+          Upload supporting evidence now. If you skip this step, you can still upload more evidence from the case analysis screen later.
+        </p>
+        <input type="file" id="evidenceFileInput" onchange="uploadEvidenceForDraft()">
+        <div id="draftEvidenceList" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="consent-box" style="margin-top:16px;">
+        <label>
+          <input type="checkbox" id="consentDPDP">
+          <span><b>Data Processing Consent:</b> I consent to LegalAI Resolver
+          processing my personal data and the data of the other party for the
+          purposes of dispute resolution under India's Digital Personal Data
+          Protection Act 2023.</span>
+        </label>
+      </div>
+      <div class="consent-box">
+        <label>
+          <input type="checkbox" id="consentDisclaimer">
+          <span><b>Disclaimer Acknowledgment:</b> I understand that LegalAI Resolver
+          provides AI-assisted document drafting and mediation support only, and is
+          not a substitute for legal advice from a licensed advocate.
+          AI-generated documents should be reviewed by a lawyer before use in court.
+          </span>
+        </label>
+      </div>
+
+      <div id="submitError" class="alert alert-error hidden"></div>
+
+      <div style="display:flex;gap:12px;margin-top:16px;">
+        <button class="btn btn-outline" onclick="goToStep2Back()">← Back</button>
+        <button class="btn btn-navy" id="btnSubmitCase" onclick="submitCase()">
+          Submit Case →
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     SCREEN 4 — CASE DETAIL
+════════════════════════════════════════════════ -->
+<div class="screen" id="screenCase">
+<div class="container">
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <button class="btn btn-outline btn-sm" onclick="showScreen('screenDashboard');loadMyCases();">
+      ← My Cases
+    </button>
+    <h2 style="font-size:18px;color:var(--navy);" id="caseTitle">Case Detail</h2>
+    <span id="caseStatusBadge"></span>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:0;border-bottom:2px solid #E2E8F0;margin-bottom:20px;">
+    <button class="tab-btn active" onclick="switchTab('tabAnalysis')" id="tabBtnAnalysis">
+      Analysis
+    </button>
+    <button class="tab-btn" onclick="switchTab('tabNegotiation')" id="tabBtnNegotiation">
+      Negotiation
+    </button>
+    <button class="tab-btn" onclick="switchTab('tabDocuments')" id="tabBtnDocuments">
+      Documents
+    </button>
+    <button class="tab-btn" onclick="switchTab('tabTimeline')" id="tabBtnTimeline">
+      Timeline
+    </button>
+  </div>
+
+  <!-- Tab: Analysis -->
+  <div id="tabAnalysis">
+    <div id="analysisContent">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Negotiation -->
+  <div id="tabNegotiation" class="hidden">
+    <div id="negotiationContent">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Documents -->
+  <div id="tabDocuments" class="hidden">
+    <div id="documentsContent">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Timeline -->
+  <div id="tabTimeline" class="hidden">
+    <div id="timelineContent">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<style>
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  color: var(--navy);
+  border-bottom-color: var(--cyan);
+}
+</style>
+
+<script>
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+const API  = '';   // same origin
+let token  = localStorage.getItem('legalai_token') || '';
+let user   = JSON.parse(localStorage.getItem('legalai_user') || 'null');
+let currentCaseId = null;
+let pollInterval  = null;
+let uploadedEvidenceFiles = [];
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+window.onload = () => {
+  if (token && user) {
+    onLoggedIn();
+  } else {
+    showScreen('screenLogin');
+  }
+  // Character counter
+  document.getElementById('disputeText').addEventListener('input', e => {
+    document.getElementById('charCount').textContent =
+      `${e.target.value.length} / 5000`;
+  });
+};
+
+// ════════════════════════════════════════════════
+// SCREEN / TAB HELPERS
+// ════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function switchTab(tabId) {
+  ['tabAnalysis','tabNegotiation','tabDocuments','tabTimeline'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+    document.getElementById('tabBtn' + id.replace('tab','')).classList.remove('active');
+  });
+  document.getElementById(tabId).classList.remove('hidden');
+  document.getElementById('tabBtn' + tabId.replace('tab','')).classList.add('active');
+
+  if (tabId === 'tabNegotiation') loadNegotiation();
+  if (tabId === 'tabDocuments')   loadDocuments();
+  if (tabId === 'tabTimeline')    loadTimeline();
+}
+
+function showAlert(elId, msg, type = 'info') {
+  const el = document.getElementById(elId);
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+// ════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════
+async function requestOtp() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const name  = document.getElementById('loginName').value.trim();
+  if (!email) return showAlert('loginMsg', 'Please enter your email.', 'error');
+
+  try {
+    showAlert('loginMsg', 'Sending OTP...', 'info');
+    await axios.post(`${API}/api/auth/request-otp`, { email, display_name: name });
+    document.getElementById('otpEmailDisplay').textContent = email;
+    document.getElementById('loginStep1').classList.add('hidden');
+    document.getElementById('loginStep2').classList.remove('hidden');
+    // Pre-fill from profile
+    if (user) {
+      document.getElementById('loginCity').value  = user.city  || '';
+      document.getElementById('loginState').value = user.state || '';
+      document.getElementById('loginPhone').value = user.phone || '';
+    }
+    showAlert('loginMsg', 'OTP sent! Check your email.', 'success');
+  } catch(e) {
+    showAlert('loginMsg', e.response?.data?.detail || 'Failed to send OTP.', 'error');
+  }
+}
+
+async function verifyOtp() {
+  const email   = document.getElementById('loginEmail').value.trim();
+  const otp     = document.getElementById('otpInput').value.trim();
+  const name    = document.getElementById('loginName').value.trim();
+  const city    = document.getElementById('loginCity').value.trim();
+  const state   = document.getElementById('loginState').value.trim();
+  const phone   = document.getElementById('loginPhone').value.trim();
+  const consent = document.getElementById('loginConsent').checked;
+
+  if (!otp || otp.length < 6) return showAlert('loginMsg', 'Enter the 6-digit code.', 'error');
+
+  try {
+    showAlert('loginMsg', 'Verifying...', 'info');
+    const r = await axios.post(`${API}/api/auth/verify-otp`, {
+      email, otp, display_name: name, city, state, phone, consent
+    });
+    token = r.data.access_token;
+    user  = r.data.user;
+    localStorage.setItem('legalai_token', token);
+    localStorage.setItem('legalai_user',  JSON.stringify(user));
+    onLoggedIn();
+  } catch(e) {
+    showAlert('loginMsg', e.response?.data?.detail || 'Verification failed.', 'error');
+  }
+}
+
+function backToEmail() {
+  document.getElementById('loginStep1').classList.remove('hidden');
+  document.getElementById('loginStep2').classList.add('hidden');
+  document.getElementById('loginMsg').classList.add('hidden');
+}
+
+function onLoggedIn() {
+  document.getElementById('navUser').textContent  = user?.display_name || user?.email || '';
+  document.getElementById('btnLogout').classList.remove('hidden');
+  // Pre-fill claimant fields
+  if (user) {
+    document.getElementById('claimantName').value  = user.display_name || '';
+    document.getElementById('claimantEmail').value = user.email || '';
+    document.getElementById('claimantCity').value  = user.city  || '';
+    document.getElementById('claimantState').value = user.state || '';
+    document.getElementById('claimantPhone').value = user.phone || '';
+  }
+  showScreen('screenDashboard');
+  loadMyCases();
+}
+
+function logout() {
+  localStorage.removeItem('legalai_token');
+  localStorage.removeItem('legalai_user');
+  token = ''; user = null;
+  document.getElementById('btnLogout').classList.add('hidden');
+  document.getElementById('navUser').textContent = '';
+  showScreen('screenLogin');
+  document.getElementById('loginStep1').classList.remove('hidden');
+  document.getElementById('loginStep2').classList.add('hidden');
+}
+
+function authHeaders() {
+  return { headers: { Authorization: `Bearer ${token}` } };
+}
+
+// ════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════
+async function loadMyCases() {
+  try {
+    const r = await axios.get(`${API}/api/cases/my-cases`, authHeaders());
+    const cases = r.data.cases || [];
+
+    // Stats
+    document.getElementById('statTotal').textContent     = cases.length;
+    document.getElementById('statSettled').textContent   = cases.filter(c=>c.status==='SETTLED').length;
+    document.getElementById('statPending').textContent   = cases.filter(c=>!['SETTLED','ESCALATED','AUTO_ESCALATED','ABANDONED','CRIMINAL_ADVISORY'].includes(c.status)).length;
+    document.getElementById('statEscalated').textContent = cases.filter(c=>['ESCALATED','AUTO_ESCALATED'].includes(c.status)).length;
+
+    if (cases.length === 0) {
+      document.getElementById('caseList').innerHTML = `
+        <div style="text-align:center;padding:40px;color:var(--muted);">
+          <p style="font-size:32px;margin-bottom:12px;">⚖️</p>
+          <p style="font-size:15px;font-weight:600;">No cases yet</p>
+          <p style="font-size:13px;margin-top:4px;">File your first dispute to get started.</p>
+          <button class="btn btn-primary" style="margin-top:16px;" onclick="showScreen('screenSubmit')">
+            File a Case →
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    document.getElementById('caseList').innerHTML = `
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Case ID</th>
+            <th>Respondent</th>
+            <th>Track</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Filed</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cases.map(c => `
+            <tr>
+              <td style="font-family:monospace;font-weight:600;">${c.id.slice(0,8).toUpperCase()}</td>
+              <td>${c.respondent_name}</td>
+              <td>${(c.track||'').replace('_',' ')}</td>
+              <td>${c.claim_amount ? 'Rs. ' + Number(c.claim_amount).toLocaleString('en-IN') : 'Non-monetary'}</td>
+              <td><span class="badge badge-${statusClass(c.status)}">${c.status}</span></td>
+              <td>${c.created_at ? c.created_at.slice(0,10) : ''}</td>
+              <td>
+                <button class="btn btn-outline btn-sm"
+                  onclick="openCase('${c.id}')">View</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch(e) {
+    document.getElementById('caseList').innerHTML =
+      `<div class="alert alert-error">Failed to load cases. Please refresh.</div>`;
+  }
+}
+
+function statusClass(s) {
+  if (['SUBMITTED','ANALYZING'].includes(s))       return 'analyzing';
+  if (s === 'ANALYZED')                            return 'analyzed';
+  if (['NEGOTIATION_OPEN','WAITING_FOR_CLAIMANT','WAITING_FOR_RESPONDENT','PROOF_REQUESTED','PROOF_RESPONSE_PENDING','MEDIATOR_REVIEW','PROPOSAL_ISSUED','SETTLEMENT_PENDING_CONFIRMATION'].includes(s)) return 'negotiating';
+  if (s === 'SETTLED')                             return 'settled';
+  if (['ESCALATED','AUTO_ESCALATED'].includes(s))  return 'escalated';
+  return 'pending';
+}
+
+// ════════════════════════════════════════════════
+// SUBMIT CASE — STEPS
+// ════════════════════════════════════════════════
+function goToStep2() {
+  const text = document.getElementById('disputeText').value.trim();
+  if (text.length < 50)
+    return alert('Please describe your dispute in at least 50 characters.');
+  setStep(2);
+}
+
+function goToStep1() { setStep(1); }
+
+function goToStep2Back() { setStep(2); }
+
+function goToStep3() {
+  const required = ['claimantName','claimantEmail','claimantPhone',
+                    'claimantCity','claimantState','respondentName','respondentEmail'];
+  for (const f of required) {
+    if (!document.getElementById(f).value.trim()) {
+      return alert(`Please fill in: ${f.replace(/([A-Z])/g,' $1').toLowerCase()}`);
+    }
+  }
+  buildReview();
+  setStep(3);
+}
+
+function setStep(n) {
+  for (let i=1;i<=3;i++) {
+    document.getElementById(`submitStep${i}`).classList.toggle('hidden', i!==n);
+    const circle = document.getElementById(`step${i}Circle`);
+    const label  = document.getElementById(`step${i}Label`);
+    circle.classList.remove('active','done');
+    label.classList.remove('active');
+    if (i < n)  { circle.classList.add('done'); circle.textContent='✓'; }
+    if (i === n){ circle.classList.add('active'); label.classList.add('active'); }
+    if (i > n)  { circle.textContent = i; }
+  }
+}
+
+function toggleCompanyFields() {
+  const isCompany = document.getElementById('respondentType').value === 'company';
+  document.getElementById('companyFields').classList.toggle('hidden', !isCompany);
+}
+
+function buildReview() {
+  const amt = document.getElementById('claimAmount').value;
+  document.getElementById('reviewContent').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div>
+        <div class="section-title">Claimant</div>
+        <div><b>${document.getElementById('claimantName').value}</b></div>
+        <div>${document.getElementById('claimantCity').value}, ${document.getElementById('claimantState').value}</div>
+        <div style="color:var(--muted);">${document.getElementById('claimantEmail').value}</div>
+      </div>
+      <div>
+        <div class="section-title">Respondent</div>
+        <div><b>${document.getElementById('respondentName').value}</b></div>
+        <div>${document.getElementById('respondentType').value}</div>
+        <div style="color:var(--muted);">${document.getElementById('respondentEmail').value}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="section-title">Claim Amount</div>
+      <div style="font-size:20px;font-weight:700;color:var(--navy);">
+        ${amt ? 'Rs. ' + Number(amt).toLocaleString('en-IN') : 'Non-monetary dispute'}
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Dispute Description</div>
+      <div style="background:var(--lgrey);padding:12px;border-radius:8px;
+                  font-size:13px;line-height:1.6;max-height:120px;overflow-y:auto;">
+        ${document.getElementById('disputeText').value}
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="section-title">Evidence Files</div>
+      <div style="font-size:13px;color:var(--muted);">
+        ${uploadedEvidenceFiles.length ? uploadedEvidenceFiles.map(file => `• ${file.filename}`).join('<br>') : 'No evidence files uploaded yet.'}
+      </div>
+    </div>
+  `;
+  renderDraftEvidenceList();
+}
+
+async function submitCase() {
+  if (!document.getElementById('consentDPDP').checked)
+    return showAlert('submitError', 'Please consent to data processing.', 'error');
+  if (!document.getElementById('consentDisclaimer').checked)
+    return showAlert('submitError', 'Please acknowledge the AI disclaimer.', 'error');
+
+  const btn = document.getElementById('btnSubmitCase');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    const payload = {
+      dispute_text:            document.getElementById('disputeText').value.trim(),
+      claimant_name:           document.getElementById('claimantName').value.trim(),
+      claimant_email:          document.getElementById('claimantEmail').value.trim(),
+      claimant_phone:          document.getElementById('claimantPhone').value.trim(),
+      claimant_city:           document.getElementById('claimantCity').value.trim(),
+      claimant_state:          document.getElementById('claimantState').value.trim(),
+      respondent_name:         document.getElementById('respondentName').value.trim(),
+      respondent_email:        document.getElementById('respondentEmail').value.trim(),
+      respondent_phone:        document.getElementById('respondentPhone').value.trim() || null,
+      respondent_type:         document.getElementById('respondentType').value,
+      respondent_company_name: document.getElementById('companyName').value.trim() || null,
+      respondent_company_reg:  document.getElementById('companyReg').value.trim() || null,
+      claim_amount:            document.getElementById('claimAmount').value ? Number(document.getElementById('claimAmount').value) : null,
+      incident_date:           document.getElementById('incidentDate').value || null,
+      currency:                'INR',
+      evidence_file_ids:       uploadedEvidenceFiles.filter(file => !String(file.id).startsWith('draft_')).map(file => file.id),
+      claimant_consent:        true,
+      disclaimer_acknowledged: true,
+    };
+
+    const r = await axios.post(`${API}/api/cases/submit`, payload, authHeaders());
+    const caseId = r.data.case_id;
+
+    const draftUploads = uploadedEvidenceFiles.filter(file => String(file.id).startsWith('draft_') && file.fileObject);
+    const uploadedRealFiles = [];
+    for (const file of draftUploads) {
+      const uploaded = await uploadEvidenceToCase(caseId, null, file.fileObject);
+      if (uploaded) uploadedRealFiles.push(uploaded);
+    }
+    if (uploadedRealFiles.length) {
+      uploadedEvidenceFiles = uploadedRealFiles;
+    }
+
+    showScreen('screenCase');
+    openCase(caseId);
+
+    // Reset form
+    document.getElementById('disputeText').value = '';
+    document.getElementById('claimAmount').value  = '';
+    uploadedEvidenceFiles = [];
+    renderDraftEvidenceList();
+    setStep(1);
+
+  } catch(e) {
+    const msg = e.response?.data?.detail || 'Submission failed. Please try again.';
+    showAlert('submitError', msg, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit Case →';
+  }
+}
+
+async function uploadEvidenceForDraft() {
+  const input = document.getElementById('evidenceFileInput');
+  const file = input?.files?.[0];
+  if (!file) return;
+  uploadedEvidenceFiles.push({
+    id: `draft_${Date.now()}`,
+    filename: file.name,
+    uploaded_at: new Date().toISOString(),
+    fileObject: file,
+  });
+  renderDraftEvidenceList();
+  input.value = '';
+}
+
+function renderDraftEvidenceList() {
+  const el = document.getElementById('draftEvidenceList');
+  if (!el) return;
+  el.innerHTML = uploadedEvidenceFiles.length
+    ? uploadedEvidenceFiles.map(file => `
+        <div style="padding:10px 12px;border:1px solid #E2E8F0;border-radius:12px;margin-bottom:8px;background:rgba(255,255,255,0.78);">
+          <div style="font-weight:700;color:var(--navy);">${file.filename}</div>
+          <div style="font-size:12px;color:var(--muted);">${new Date(file.uploaded_at).toLocaleString('en-IN')}</div>
+        </div>
+      `).join('')
+    : '<div style="font-size:13px;color:var(--muted);">No evidence uploaded yet.</div>';
+}
+
+async function uploadEvidenceToCase(caseId, inputId, directFile = null) {
+  const input = inputId ? document.getElementById(inputId) : null;
+  const file = directFile || input?.files?.[0];
+  if (!file) return null;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const r = await axios.post(`${API}/api/cases/${caseId}/evidence-upload`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    uploadedEvidenceFiles = [...uploadedEvidenceFiles.filter(item => item.id !== r.data.id), r.data];
+    renderDraftEvidenceList();
+    if (input) input.value = '';
+    return r.data;
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Failed to upload evidence.');
+    return null;
+  }
+}
+
+// ════════════════════════════════════════════════
+// CASE DETAIL
+// ════════════════════════════════════════════════
+async function openCase(caseId) {
+  currentCaseId = caseId;
+  showScreen('screenCase');
+  switchTab('tabAnalysis');
+  loadAnalysis(caseId);
+
+  // Stop any existing poll
+  if (pollInterval) clearInterval(pollInterval);
+
+  // Poll status if analyzing
+  pollInterval = setInterval(async () => {
+    try {
+      const r = await axios.get(`${API}/api/cases/${caseId}/status`);
+      const s = r.data.status;
+      document.getElementById('caseStatusBadge').innerHTML =
+        `<span class="badge badge-${statusClass(s)}">${s}</span>`;
+      if (['ANALYZED','SETTLED','ESCALATED','AUTO_ESCALATED',
+           'ABANDONED','CRIMINAL_ADVISORY'].includes(s)) {
+        clearInterval(pollInterval);
+        loadAnalysis(caseId);
+      }
+    } catch(e) {}
+  }, 5000);
+}
+
+async function loadAnalysis(caseId) {
+  try {
+    const r    = await axios.get(`${API}/api/cases/${caseId}`, authHeaders());
+    const c    = r.data;
+    const i    = c.intake_data    || {};
+    const l    = c.legal_data     || {};
+    const a    = c.analytics_data || {};
+    uploadedEvidenceFiles = c.evidence_files || [];
+
+    document.getElementById('caseTitle').textContent =
+      `Case #${caseId.slice(0,8).toUpperCase()}`;
+    document.getElementById('caseStatusBadge').innerHTML =
+      `<span class="badge badge-${statusClass(c.status)}">${c.status}</span>`;
+
+    // Still analyzing
+    if (['SUBMITTED','ANALYZING'].includes(c.status)) {
+      document.getElementById('analysisContent').innerHTML = `
+        <div class="card" style="text-align:center;padding:40px;">
+          <div class="spinner"></div>
+          <p style="color:var(--muted);margin-top:12px;">
+            AI agents are analyzing your case. This usually takes 30–60 seconds.
+          </p>
+          <div class="progress-wrap" style="margin-top:16px;">
+            <div class="progress-bar" style="width:60%;"></div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Criminal advisory
+    if (c.status === 'CRIMINAL_ADVISORY') {
+      document.getElementById('analysisContent').innerHTML = `
+        <div class="card">
+          <div class="alert alert-error">
+            <div>
+              <b>Criminal Matter — Mediation Not Applicable</b><br>
+              This dispute involves criminal elements. AI mediation is not possible.
+              A legal advisory has been prepared for you.
+            </div>
+          </div>
+          ${renderCriminalAdvisory(i, l)}
+        </div>
+      `;
+      return;
+    }
+
+    let sendInviteBtn = '';
+    if (c.status === 'ANALYZED') {
+      sendInviteBtn = `
+        <button class="btn btn-primary" style="margin-top:16px;"
+          onclick="sendInvite('${caseId}')">
+          Send Invite to Respondent →
+        </button>
+      `;
+    }
+
+    document.getElementById('analysisContent').innerHTML = `
+      <!-- Stats row -->
+      <div class="stat-grid" style="margin-bottom:16px;">
+        <div class="stat-card">
+          <div class="stat-val" style="color:${wpColor(a.win_probability)};">
+            ${a.win_probability ?? '—'}%
+          </div>
+          <div class="stat-lbl">Win Probability</div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--green);">
+          <div class="stat-val">
+            ${a.zopa_optimal ? 'Rs. '+Number(a.zopa_optimal).toLocaleString('en-IN') : '—'}
+          </div>
+          <div class="stat-lbl">Optimal Settlement</div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--red);">
+          <div class="stat-val">
+            ${a.court_cost_estimate ? 'Rs. '+Number(a.court_cost_estimate).toLocaleString('en-IN') : '—'}
+          </div>
+          <div class="stat-lbl">Court Cost Est.</div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--gold);">
+          <div class="stat-val">${a.time_to_resolution_months ?? '—'}</div>
+          <div class="stat-lbl">Months if Court</div>
+        </div>
+      </div>
+
+      <!-- Legal standing -->
+      <div class="card">
+        <div class="card-title">Legal Analysis</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <span style="font-size:13px;color:var(--muted);">Legal Standing:</span>
+          <span style="font-weight:700;color:var(--navy);">
+            ${l.legal_standing || '—'}
+          </span>
+          <span style="font-size:12px;color:var(--muted);">
+            — ${l.legal_standing_reason || ''}
+          </span>
+        </div>
+        <div style="margin-bottom:10px;">
+          <div class="section-title">Applicable Laws</div>
+          ${(l.applicable_laws || []).slice(0,6).map(law =>
+            `<span class="law-tag">${law.act} S.${law.section}</span>`
+          ).join('')}
+        </div>
+      <div class="form-row">
+        <div>
+          <div class="section-title">Your Strengths</div>
+          ${(i.claimant_strengths || []).map(s => `<div style="font-size:13px;color:var(--green);padding:2px 0;">✓ ${s}</div>`).join('')}
+        </div>
+        <div>
+          <div class="section-title">Likely Defenses</div>
+          ${(l.respondent_defenses || []).slice(0,3).map(d => `<div style="font-size:13px;color:var(--muted);padding:2px 0;">• ${d}</div>`).join('')}
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:12px;">
+        <div>
+          <div class="section-title">What Hurts Your Case</div>
+          ${((i.claimant_weaknesses || a.risk_factors || [])).map(s => `<div style="font-size:13px;color:var(--red);padding:2px 0;">• ${s}</div>`).join('') || '<div style="font-size:13px;color:var(--muted);">No major weaknesses highlighted.</div>'}
+        </div>
+        <div>
+          <div class="section-title">Missing Proof</div>
+          ${((i.missing_proof_checklist || a.missing_evidence || [])).map(s => `<div style="font-size:13px;color:var(--gold);padding:2px 0;">• ${s}</div>`).join('') || '<div style="font-size:13px;color:var(--muted);">No urgent proof gaps highlighted.</div>'}
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="section-title">Forum</div>
+        <div style="font-size:13px;font-weight:600;">${l.forum_name || '—'}</div>
+      </div>
+    </div>
+
+      <div class="card">
+        <div class="card-title">Cost Comparison</div>
+        <div style="font-size:14px;color:var(--dark);line-height:1.7;">${a.cost_comparison || 'Settlement usually saves cost and time compared with a full court case.'}</div>
+        <div class="offer-grid" style="margin-top:14px;">
+          <div class="offer-box">
+            <div class="offer-label">Court Cost</div>
+            <div class="offer-amount" style="font-size:22px;">${a.court_cost_estimate ? 'Rs. ' + Number(a.court_cost_estimate).toLocaleString('en-IN') : 'â€”'}</div>
+          </div>
+          <div class="offer-box">
+            <div class="offer-label">Platform Cost</div>
+            <div class="offer-amount" style="font-size:22px;">${a.settlement_cost ? 'Rs. ' + Number(a.settlement_cost).toLocaleString('en-IN') : 'â€”'}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Winning Strategy</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+          <button class="btn btn-gold" onclick="generateWinningStrategy()">Generate Winning Strategy</button>
+          <label class="btn btn-outline" style="cursor:pointer;">
+            Upload More Evidence
+            <input type="file" id="caseEvidenceUpload" onchange="uploadLiveEvidence('${caseId}')" style="display:none;">
+          </label>
+        </div>
+        <div id="strategyPanel">${renderStrategy(c.strategy_data || {})}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Live Agent Reasoning Log</div>
+        ${renderReasoningLog(c.ai_reasoning_log || [])}
+      </div>
+
+      ${sendInviteBtn}
+    `;
+  } catch(e) {
+    document.getElementById('analysisContent').innerHTML =
+      `<div class="alert alert-error">Failed to load analysis.</div>`;
+  }
+}
+
+function wpColor(wp) {
+  if (!wp) return 'var(--muted)';
+  if (wp >= 70) return 'var(--green)';
+  if (wp >= 50) return 'var(--gold)';
+  return 'var(--red)';
+}
+
+function renderStrategy(strategy) {
+  if (!strategy || Object.keys(strategy).length === 0) {
+    return '<div style="font-size:13px;color:var(--muted);">No strategy generated yet. Use the button above to create a negotiation and evidence plan.</div>';
+  }
+  return `
+    <div style="font-size:14px;color:var(--dark);line-height:1.7;margin-bottom:12px;">${strategy.recommended_positioning || ''}</div>
+    <div class="offer-grid">
+      <div class="offer-box" style="text-align:left;">
+        <div class="offer-label">What To Say</div>
+        ${(strategy.what_to_say || []).map(item => `<div style="font-size:13px;padding:2px 0;">• ${item}</div>`).join('')}
+      </div>
+      <div class="offer-box" style="text-align:left;">
+        <div class="offer-label">Evidence To Gather</div>
+        ${(strategy.evidence_to_gather || []).map(item => `<div style="font-size:13px;padding:2px 0;">• ${item}</div>`).join('')}
+      </div>
+      <div class="offer-box" style="text-align:left;">
+        <div class="offer-label">Mistakes To Avoid</div>
+        ${(strategy.mistakes_to_avoid || []).map(item => `<div style="font-size:13px;padding:2px 0;">• ${item}</div>`).join('')}
+      </div>
+      <div class="offer-box" style="text-align:left;">
+        <div class="offer-label">Court Backup Plan</div>
+        ${(strategy.court_backup_plan || []).map(item => `<div style="font-size:13px;padding:2px 0;">• ${item}</div>`).join('')}
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:13px;color:var(--muted);"><b>Best next action:</b> ${strategy.best_next_action || '—'}</div>
+  `;
+}
+
+function renderReasoningLog(logs) {
+  if (!logs || !logs.length) {
+    return '<div style="font-size:13px;color:var(--muted);">No reasoning events recorded yet.</div>';
+  }
+  return logs.slice().reverse().map(entry => `
+    <div style="padding:12px 14px;border:1px solid #E2E8F0;border-radius:14px;margin-bottom:10px;background:rgba(255,255,255,0.68);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+        <div style="font-weight:700;color:var(--navy);">${entry.title}</div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;">${entry.stage}</div>
+      </div>
+      <div style="font-size:13px;color:var(--dark);line-height:1.6;margin-top:6px;">${entry.detail}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">${new Date(entry.timestamp).toLocaleString('en-IN')}</div>
+    </div>
+  `).join('');
+}
+
+async function generateWinningStrategy() {
+  if (!currentCaseId) return;
+  try {
+    const r = await axios.post(`${API}/api/cases/${currentCaseId}/strategy`, {}, authHeaders());
+    document.getElementById('strategyPanel').innerHTML = renderStrategy(r.data);
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Failed to generate strategy.');
+  }
+}
+
+async function uploadLiveEvidence(caseId) {
+  const result = await uploadEvidenceToCase(caseId, 'caseEvidenceUpload');
+  if (result) {
+    loadAnalysis(caseId);
+  }
+}
+
+function renderCriminalAdvisory(i, l) {
+  return `
+    <div style="margin-top:16px;">
+      <div class="section-title">IPC Sections</div>
+      ${(i.criminal_sections_likely || l.ipc_sections || []).map(s =>
+        `<span class="law-tag" style="background:#FEE2E2;color:#7F1D1D;">${s}</span>`
+      ).join('')}
+    </div>
+    <div style="margin-top:12px;">
+      <div class="section-title">Recommended Authority</div>
+      <div style="font-size:13px;font-weight:600;">${i.recommended_authority || '—'}</div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="section-title">Support Resources</div>
+      ${(i.support_resources || []).map(r =>
+        `<div style="font-size:13px;color:var(--muted);padding:2px 0;">• ${r}</div>`
+      ).join('')}
+    </div>
+  `;
+}
+
+async function sendInvite(caseId) {
+  try {
+    await axios.post(`${API}/api/cases/${caseId}/send-invite`, {}, authHeaders());
+    loadAnalysis(caseId);
+    alert('Invite sent to respondent.');
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to send invite.');
+  }
+}
+
+// ════════════════════════════════════════════════
+// NEGOTIATION TAB
+// ════════════════════════════════════════════════
+async function loadNegotiation() {
+  if (!currentCaseId) return;
+  try {
+    const [caseR, negR] = await Promise.all([
+      axios.get(`${API}/api/cases/${currentCaseId}`, authHeaders()),
+      axios.get(`${API}/api/negotiation/status/${currentCaseId}`, authHeaders()),
+    ]);
+    const c  = caseR.data;
+    const ns = negR.data;
+    const rd = ns.current_round_detail;
+
+    let html = '';
+
+    // Status message
+    const statusMessages = {
+      NEGOTIATION_OPEN: 'Negotiation is open. You can submit an offer, explanation, and proof request.',
+      WAITING_FOR_CLAIMANT: 'This round is already open. The other side has submitted, and the next action is with you.',
+      WAITING_FOR_RESPONDENT: 'Round 1 starts as soon as the first offer is submitted. Your offer has opened the round and the system is waiting for the respondent.',
+      PROOF_REQUESTED: 'A proof request is open. Review the requested material below.',
+      PROOF_RESPONSE_PENDING: 'A proof response is pending before negotiation can continue.',
+      MEDIATOR_REVIEW: 'Both sides have submitted. The AI mediator is reviewing the round.',
+      PROPOSAL_ISSUED: 'AI proposal issued. Please accept or reject below.',
+      SETTLEMENT_PENDING_CONFIRMATION: 'A direct settlement match was found. Confirm it below.',
+      SETTLED: 'Case has been settled.',
+      ESCALATED: 'Case has been escalated after failed negotiation.',
+    };
+    const msg = statusMessages[c.status];
+    if (msg) {
+      html += `<div class="alert alert-info" style="margin-bottom:16px;">${msg}</div>`;
+    }
+
+    // Round indicator
+    html += `
+      <div class="card">
+        <div class="card-title">Negotiation Progress</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          ${[1,2,3].map(n => `
+            <div style="flex:1;text-align:center;padding:12px;border-radius:8px;
+              background:${n < (c.current_round||0) ? 'var(--green)' :
+                          n === (c.current_round||0) ? 'var(--navy)' : 'var(--lgrey)'};
+              color:${n <= (c.current_round||0) ? 'white' : 'var(--muted)'};">
+              <div style="font-size:18px;font-weight:700;">Round ${n}</div>
+              <div style="font-size:11px;margin-top:2px;">
+                ${n < (c.current_round||0) ? 'Complete' :
+                  n === (c.current_round||0) ? 'Current' : 'Pending'}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+    `;
+
+    // Current round offers (if any)
+      if (rd) {
+        if (ns.insights) {
+          html += `
+            <div class="offer-grid" style="margin-bottom:16px;">
+              <div class="offer-box" style="text-align:left;">
+                <div class="offer-label">What Helps You</div>
+                ${(ns.insights.what_helps_claimant || []).map(x => `<div style="font-size:13px;color:var(--green);padding:2px 0;">✓ ${x}</div>`).join('') || '<div style="font-size:13px;color:var(--muted);">No highlights yet.</div>'}
+              </div>
+              <div class="offer-box" style="text-align:left;">
+                <div class="offer-label">What The Other Side Can Argue</div>
+                ${(ns.insights.respondent_defenses || []).map(x => `<div style="font-size:13px;color:var(--muted);padding:2px 0;">• ${x}</div>`).join('') || '<div style="font-size:13px;color:var(--muted);">No defenses highlighted yet.</div>'}
+              </div>
+            </div>
+          `;
+        }
+        if ((ns.negotiation?.proof_requests || []).length > 0) {
+          html += `
+            <div class="card" style="margin-bottom:16px;">
+              <div class="card-title">Proof Exchange</div>
+              ${(ns.negotiation.proof_requests || []).filter(p => p.round_number === ns.current_round).map(p => `
+                <div style="padding:10px 12px;border:1px solid #E2E8F0;border-radius:8px;margin-bottom:10px;">
+                  <div style="font-size:12px;color:var(--muted);text-transform:uppercase;">${p.requested_by} asked ${p.requested_from}</div>
+                  <div style="font-size:13px;font-weight:600;margin:4px 0;">${p.request_text}</div>
+                  <div style="font-size:12px;color:${p.status === 'PENDING' ? 'var(--gold)' : 'var(--green)'};">${p.status}</div>
+                  ${p.response_text ? `<div style="font-size:13px;color:var(--dark);margin-top:6px;">Response: ${p.response_text}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          `;
+        }
+        if (rd.proposed_amount !== null && rd.proposed_amount !== undefined) {
+          html += `
+            <div class="proposal-box">
+              <div class="proposal-label">${c.status === 'SETTLEMENT_PENDING_CONFIRMATION' ? 'Direct Settlement Match' : 'AI Mediator Proposal'}</div>
+              <div class="proposal-amount">
+                Rs. ${Number(rd.proposed_amount).toLocaleString('en-IN')}
+              </div>
+            </div>
+          `;
+        if (rd.ai_reasoning) {
+          html += `
+            <div class="reasoning-box">
+              <p><b style="color:#93C5FD;">AI Reasoning:</b> ${rd.ai_reasoning}</p>
+            </div>
+          `;
+        }
+        if (rd.ai_reasoning_breakdown) {
+          html += `
+            <div class="offer-grid" style="margin-bottom:12px;">
+              <div class="offer-box" style="text-align:left;">
+                <div class="offer-label">Amount Logic</div>
+                <div style="font-size:13px;line-height:1.6;">${rd.ai_reasoning_breakdown.amount_logic || '—'}</div>
+              </div>
+              <div class="offer-box" style="text-align:left;">
+                <div class="offer-label">Evidence Weight</div>
+                <div style="font-size:13px;line-height:1.6;">${rd.ai_reasoning_breakdown.evidence_weight || '—'}</div>
+              </div>
+              <div class="offer-box" style="text-align:left;">
+                <div class="offer-label">Court Comparison</div>
+                <div style="font-size:13px;line-height:1.6;">${rd.ai_reasoning_breakdown.court_comparison || '—'}</div>
+              </div>
+              <div class="offer-box" style="text-align:left;">
+                <div class="offer-label">Risk Snapshot</div>
+                <div style="font-size:13px;line-height:1.6;"><b>Claimant:</b> ${rd.ai_reasoning_breakdown.claimant_risk || '—'}<br><b>Respondent:</b> ${rd.ai_reasoning_breakdown.respondent_risk || '—'}</div>
+              </div>
+            </div>
+          `;
+        }
+        if ((rd.ai_reasoning_log || []).length) {
+          html += `
+            <div class="card" style="margin-bottom:12px;background:rgba(255,255,255,0.72);">
+              <div class="card-title">Mediator Reasoning Log</div>
+              ${(rd.ai_reasoning_log || []).map(step => `<div style="font-size:13px;color:var(--dark);padding:4px 0;">• ${step}</div>`).join('')}
+            </div>
+          `;
+        }
+        // Decision status
+        html += `
+          <div class="offer-grid" style="margin:12px 0;">
+            <div class="offer-box">
+              <div class="offer-label">Your Decision</div>
+              <div style="font-size:18px;font-weight:700;
+                color:${rd.claimant_decision==='ACCEPT'?'var(--green)':
+                         rd.claimant_decision==='REJECT'?'var(--red)':'var(--gold)'};">
+                ${rd.claimant_decision || 'PENDING'}
+              </div>
+            </div>
+            <div class="offer-box">
+              <div class="offer-label">Respondent Decision</div>
+              <div style="font-size:18px;font-weight:700;
+                color:${rd.respondent_decision==='ACCEPT'?'var(--green)':
+                         rd.respondent_decision==='REJECT'?'var(--red)':'var(--gold)'};">
+                ${rd.respondent_decision || 'PENDING'}
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Accept / Reject buttons if pending
+        if (rd.claimant_decision === 'PENDING' && ['PROPOSAL_ISSUED','SETTLEMENT_PENDING_CONFIRMATION'].includes(c.status)) {
+          html += `
+            <div style="display:flex;gap:12px;margin-top:12px;">
+              <button class="btn btn-green" style="flex:1;"
+                onclick="respondToProposal('ACCEPT')">
+                ✓ Accept Proposal
+              </button>
+              <button class="btn btn-red" style="flex:1;"
+                onclick="respondToProposal('REJECT')">
+                ✗ Reject
+              </button>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Submit offer form (only when NEGOTIATING and no offer yet)
+    if (['NEGOTIATION_OPEN','WAITING_FOR_CLAIMANT','PROOF_REQUESTED','PROOF_RESPONSE_PENDING'].includes(c.status) && (!c.action_required_by || c.action_required_by === 'claimant')) {
+      const roundNum = ns.current_round || c.current_round || 1;
+      html += `
+        </div>
+        <div class="card">
+          <div class="card-title">Submit Your Offer — Round ${roundNum}</div>
+          <div class="form-group">
+            <label>Your Offer Amount (Rs.)</label>
+            <input type="number" id="claimantOfferAmt" placeholder="e.g. 40000">
+          </div>
+          <div class="form-group">
+            <label>Why This Offer Is Fair</label>
+            <textarea id="claimantExplanation" placeholder="Explain your legal position, practical concerns, or proposed terms."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Proof / Evidence Note</label>
+            <textarea id="claimantProofNote" placeholder="Mention receipts, messages, photos, agreements, or any missing proof."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Ask For Proof From Respondent</label>
+            <input type="text" id="claimantRequestedProof" placeholder="Comma-separated, e.g. repair bills, payment proof, inspection report">
+          </div>
+          <button class="btn btn-primary" onclick="submitClaimantOffer(${roundNum})">
+            Submit Offer →
+          </button>
+        </div>
+      `;
+    } else {
+      html += '</div>';
+    }
+
+    // Settlement actions
+    if (c.status === 'SETTLED') {
+      html += `
+        <div class="card">
+          <div class="card-title">Settlement Complete</div>
+          <div class="alert alert-success">
+            Case settled for Rs. ${Number(c.settled_amount||0).toLocaleString('en-IN')}.
+          </div>
+          ${ns.settlement_email_status ? `
+            <div class="offer-grid" style="margin-bottom:12px;">
+              <div class="offer-box">
+                <div class="offer-label">Claimant Email</div>
+                <div style="font-size:16px;font-weight:700;color:${ns.settlement_email_status.sent_to_claimant ? 'var(--green)' : 'var(--red)'};">
+                  ${ns.settlement_email_status.sent_to_claimant ? 'Sent' : 'Not Sent'}
+                </div>
+              </div>
+              <div class="offer-box">
+                <div class="offer-label">Respondent Email</div>
+                <div style="font-size:16px;font-weight:700;color:${ns.settlement_email_status.sent_to_respondent ? 'var(--green)' : 'var(--red)'};">
+                  ${ns.settlement_email_status.sent_to_respondent ? 'Sent' : 'Not Sent'}
+                </div>
+              </div>
+            </div>
+          ` : ''}
+          ${ns.settlement_url ? `
+            <a class="btn btn-green" href="${ns.settlement_url}" target="_blank" rel="noopener noreferrer" style="margin-bottom:12px;">
+              Download Settlement Agreement
+            </a>
+          ` : ''}
+          <div style="display:flex;gap:12px;margin-top:12px;">
+            <button class="btn btn-green" onclick="confirmPayment(true)">
+              ✓ Payment Received
+            </button>
+            <button class="btn btn-red" onclick="confirmPayment(false)">
+              Payment Not Received
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    document.getElementById('negotiationContent').innerHTML = html;
+
+  } catch(e) {
+    document.getElementById('negotiationContent').innerHTML =
+      `<div class="alert alert-error">Failed to load negotiation data.</div>`;
+  }
+}
+
+async function submitClaimantOffer(roundNum) {
+  const amt = document.getElementById('claimantOfferAmt')?.value;
+  if (!amt) return alert('Enter your offer amount.');
+  const explanation = document.getElementById('claimantExplanation')?.value.trim() || '';
+  const proofNote = document.getElementById('claimantProofNote')?.value.trim() || '';
+  const requestedProof = (document.getElementById('claimantRequestedProof')?.value || '')
+    .split(',')
+    .map(x => x.trim())
+    .filter(Boolean);
+  try {
+    await axios.post(`${API}/api/negotiation/submit-claimant-offer`, {
+      case_id:      currentCaseId,
+      round_number: roundNum,
+      offer_amount: Number(amt),
+      explanation: explanation,
+      proof_note: proofNote,
+      requested_proof: requestedProof,
+    }, authHeaders());
+    loadNegotiation();
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to submit offer.');
+  }
+}
+
+async function respondToProposal(decision) {
+  try {
+    const r = await axios.get(`${API}/api/cases/${currentCaseId}`, authHeaders());
+    const roundNum = r.data.current_round || 1;
+    await axios.post(`${API}/api/negotiation/proposal-response`, {
+      case_id:      currentCaseId,
+      round_number: roundNum,
+      decision:     decision,
+      party:        'claimant',
+    }, authHeaders());
+    alert(decision === 'ACCEPT' ? 'Accepted! Waiting for respondent.' : 'Rejected. Next round will start.');
+    loadNegotiation();
+    loadMyCases();
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to record decision.');
+  }
+}
+
+async function confirmPayment(honored) {
+  try {
+    await axios.post(
+      `${API}/api/cases/${currentCaseId}/confirm-payment?honored=${honored}`,
+      {}, authHeaders()
+    );
+    alert(honored
+      ? 'Payment confirmed. Case fully resolved.'
+      : 'Breach recorded. A Breach of Settlement Notice will be emailed to you.'
+    );
+    loadNegotiation();
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to confirm payment.');
+  }
+}
+
+// ════════════════════════════════════════════════
+// DOCUMENTS TAB
+// ════════════════════════════════════════════════
+async function loadDocuments() {
+  if (!currentCaseId) return;
+  try {
+    const r    = await axios.get(`${API}/api/documents/${currentCaseId}/all`, authHeaders());
+    const docs = r.data.documents || {};
+
+    const docDefs = [
+      { key: 'demand_letter',         label: 'Demand Letter',         color: 'var(--navy)',  icon: '📄' },
+      { key: 'court_file',            label: 'Court-Ready Case File', color: 'var(--red)',   icon: '⚖️' },
+      { key: 'settlement_agreement',  label: 'Settlement Agreement',  color: 'var(--green)', icon: '✅' },
+      { key: 'fir_advisory',          label: 'FIR Advisory',          color: 'var(--orange)',icon: '🚨' },
+      { key: 'mediation_certificate', label: 'Mediation Certificate', color: 'var(--blue)',  icon: '🏛️' },
+      { key: 'breach_notice',         label: 'Breach of Settlement',  color: '#7F1D1D',      icon: '⚠️' },
+    ];
+
+    const available = docDefs.filter(d => docs[d.key]);
+    const unavailable = docDefs.filter(d => !docs[d.key]);
+
+    let html = '<div class="card"><div class="card-title">Available Documents</div>';
+
+    if (available.length === 0) {
+      html += `<p style="color:var(--muted);font-size:13px;">
+        No documents available yet. Documents are generated after case analysis.
+      </p>`;
+    } else {
+      html += available.map(d => `
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:14px;border-radius:8px;border:1.5px solid ${d.color};
+                    margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:24px;">${d.icon}</span>
+            <div>
+              <div style="font-weight:700;color:var(--navy);">${d.label}</div>
+              <div style="font-size:11px;color:var(--muted);">PDF · AI Generated</div>
+            </div>
+          </div>
+          <a href="${docs[d.key]}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-outline btn-sm">Download →</a>
+        </div>
+      `).join('');
+    }
+
+    if (unavailable.length > 0) {
+      html += `
+        <div style="margin-top:16px;">
+          <div class="section-title">Not Yet Available</div>
+          ${unavailable.map(d => `
+            <div style="padding:8px 0;font-size:13px;color:var(--muted);">
+              ${d.icon} ${d.label} — Generated at the appropriate stage
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    html += '</div>';
+    document.getElementById('documentsContent').innerHTML = html;
+
+  } catch(e) {
+    document.getElementById('documentsContent').innerHTML =
+      `<div class="alert alert-error">Failed to load documents.</div>`;
+  }
+}
+
+// ════════════════════════════════════════════════
+// TIMELINE TAB
+// ════════════════════════════════════════════════
+async function loadTimeline() {
+  if (!currentCaseId) return;
+  try {
+    const r      = await axios.get(`${API}/api/cases/${currentCaseId}/timeline`, authHeaders());
+    const events = r.data.timeline || [];
+
+    let html = '<div class="card"><div class="card-title">Case Timeline</div>';
+    html += '<div style="position:relative;padding-left:28px;">';
+
+    events.forEach((ev, idx) => {
+      const isLast = idx === events.length - 1;
+      html += `
+        <div style="position:relative;padding-bottom:${isLast?'0':'20px'};">
+          ${!isLast ? `<div style="position:absolute;left:-21px;top:24px;bottom:0;
+            width:2px;background:#E2E8F0;"></div>` : ''}
+          <div style="position:absolute;left:-28px;top:4px;
+            width:14px;height:14px;border-radius:50%;
+            background:var(--cyan);border:2px solid white;
+            box-shadow:0 0 0 2px var(--cyan);"></div>
+          <div style="font-size:13px;font-weight:600;color:var(--navy);">${ev.label}</div>
+          ${ev.timestamp ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">
+            ${new Date(ev.timestamp).toLocaleString('en-IN')}
+          </div>` : ''}
+        </div>
+      `;
+    });
+
+    html += '</div></div>';
+    document.getElementById('timelineContent').innerHTML = html;
+
+  } catch(e) {
+    document.getElementById('timelineContent').innerHTML =
+      `<div class="alert alert-error">Failed to load timeline.</div>`;
+  }
+}
+</script>
+</body>
+</html>

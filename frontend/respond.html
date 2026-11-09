@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LegalAI Resolver — Respond to Dispute</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+<style>
+  :root {
+    --navy:#0b1f3a; --blue:#1859b8; --cyan:#13b8c8;
+    --green:#14804a; --red:#c53b31; --gold:#b88619;
+    --dark:#142033; --muted:#61748f; --lgrey:#eef3f9; --white:#fff;
+    --line:rgba(15,42,74,0.10); --shadow:0 18px 50px rgba(13,29,55,0.10);
+    --shadow-strong:0 24px 70px rgba(13,29,55,0.16);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:Aptos, "Trebuchet MS", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(19,184,200,0.16), transparent 28%),
+      radial-gradient(circle at 88% 12%, rgba(197,59,49,0.10), transparent 20%),
+      linear-gradient(180deg, #f6f8fc 0%, #ecf1f8 52%, #f8fafc 100%);
+    color:var(--dark);
+    min-height:100vh;
+  }
+  nav {
+    background:linear-gradient(135deg, rgba(11,31,58,0.96), rgba(24,89,184,0.88));
+    backdrop-filter:blur(18px);
+    padding:0 28px; height:68px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid rgba(255,255,255,0.12);
+    box-shadow:0 10px 30px rgba(11,31,58,0.16);
+  }
+  .nav-brand { color:#7ee6ef; font-size:20px; font-weight:800; }
+  .nav-brand span { color:white; }
+  .nav-tag {
+    background:linear-gradient(135deg, #d86042, #ee8a52); color:white; padding:7px 14px;
+    border-radius:999px; font-size:12px; font-weight:800; box-shadow:0 8px 18px rgba(197,59,49,0.20);
+  }
+  .container { max-width:900px; margin:0 auto; padding:28px 18px 36px; }
+  .card {
+    background:linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.86));
+    border:1px solid rgba(255,255,255,0.7);
+    backdrop-filter:blur(14px);
+    border-radius:22px; padding:24px;
+    margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  .card-title {
+    font-size:17px; font-weight:800; color:var(--navy);
+    margin-bottom:16px; padding-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .btn {
+    display:inline-block; padding:12px 20px; border-radius:14px;
+    font-size:14px; font-weight:700; cursor:pointer; border:none;
+    text-decoration:none; transition:transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  }
+  .btn:hover { opacity:0.96; transform:translateY(-1px); }
+  .btn-primary { background:linear-gradient(135deg, #7de7ef, #4bb9e8); color:var(--navy); box-shadow:0 12px 24px rgba(19,184,200,0.24); }
+  .btn-green   { background:linear-gradient(135deg, #178d53, #28b36a); color:white; box-shadow:0 12px 24px rgba(20,128,74,0.22); }
+  .btn-red     { background:linear-gradient(135deg, #bf4138, #d86042); color:white; box-shadow:0 12px 24px rgba(197,59,49,0.18); }
+  .btn-outline {
+    background:rgba(255,255,255,0.55); border:1px solid rgba(19,184,200,0.28); color:var(--blue);
+  }
+  .btn-full { width:100%; display:block; text-align:center; }
+  .form-group { margin-bottom:14px; }
+  label {
+    display:block; font-size:13px; font-weight:600; color:var(--muted);
+    margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  input, select, textarea {
+    width:100%; padding:12px 14px; border:1px solid rgba(15,42,74,0.12);
+    border-radius:14px; font-size:14px; color:var(--dark); background:rgba(255,255,255,0.92);
+  }
+  input:focus, select:focus, textarea:focus {
+    outline:none; border-color:rgba(19,184,200,0.55); box-shadow:0 0 0 4px rgba(19,184,200,0.12);
+  }
+  .alert {
+    padding:12px 16px; border-radius:16px; font-size:13px;
+    margin-bottom:14px; box-shadow:0 10px 25px rgba(15,42,74,0.06);
+  }
+  .alert-error   { background:linear-gradient(135deg, #fff0ef, #fee2e2); color:#7F1D1D; border-left:4px solid var(--red); }
+  .alert-success { background:linear-gradient(135deg, #ebfaef, #d7f6df); color:#064E3B; border-left:4px solid var(--green); }
+  .alert-warn    { background:linear-gradient(135deg, #fff6df, #fff1cc); color:#92400E; border-left:4px solid var(--gold); }
+  .alert-info    { background:linear-gradient(135deg, #edf9fb, #e3f2ff); color:#0C4A6E; border-left:4px solid var(--cyan); }
+  .section-title {
+    font-size:11px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;
+  }
+  .kv-row {
+    display:flex; justify-content:space-between; padding:8px 0;
+    border-bottom:1px solid var(--lgrey); font-size:13px;
+  }
+  .kv-key   { color:var(--muted); }
+  .kv-val   { font-weight:600; color:var(--dark); }
+  .proposal-box {
+    background:radial-gradient(circle at top, rgba(126,230,239,0.20), transparent 32%), linear-gradient(135deg, #0f2749, #163b69 65%, #1d588f);
+    border-radius:22px; padding:24px;
+    text-align:center; margin:16px 0; box-shadow:var(--shadow-strong);
+  }
+  .proposal-amount { font-size:36px; font-weight:700; color:var(--cyan); }
+  .proposal-label  {
+    font-size:12px; color:#93C5FD; margin-bottom:8px;
+    text-transform:uppercase; letter-spacing:1px;
+  }
+  .reasoning-box {
+    background:linear-gradient(135deg, #1a345e, #214879); border-radius:18px; padding:14px; margin:12px 0;
+  }
+  .reasoning-box p { color:#BFDBFE; font-size:13px; line-height:1.6; }
+  .law-tag {
+    display:inline-block; background:#EDE9FE; color:#4C1D95;
+    padding:3px 8px; border-radius:4px; font-size:11px;
+    margin:2px; font-weight:600;
+  }
+  .spinner {
+    width:36px; height:36px;
+    border:4px solid #E2E8F0; border-top-color:var(--cyan);
+    border-radius:50%; animation:spin 0.8s linear infinite; margin:20px auto;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .hidden { display:none !important; }
+  .screen { display:none; }
+  .screen.active { display:block; }
+  .hero-panel {
+    background:radial-gradient(circle at top left, rgba(126,230,239,0.28), transparent 28%), linear-gradient(135deg, rgba(11,31,58,0.96), rgba(24,89,184,0.88));
+    color:white; border-radius:28px; padding:28px; box-shadow:var(--shadow-strong); margin-bottom:20px; position:relative; overflow:hidden;
+  }
+  .hero-panel::after {
+    content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.08);
+  }
+  .hero-kicker {
+    display:inline-block; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.18); color:#dffcff; padding:6px 12px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; margin-bottom:14px;
+  }
+  .hero-title {
+    font-size:30px; font-weight:800; line-height:1.05; letter-spacing:-1px; margin-bottom:10px;
+  }
+  .hero-copy {
+    color:rgba(233,244,255,0.92); font-size:14px; line-height:1.7; max-width:680px;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">LegalAI <span>Resolver</span></div>
+  <div class="nav-tag">Respondent Portal</div>
+</nav>
+
+<!-- SCREEN: Loading -->
+<div class="screen active" id="screenLoading">
+  <div class="container" style="text-align:center;padding:60px 16px;">
+    <div class="spinner"></div>
+    <p style="color:var(--muted);margin-top:12px;">Loading case details...</p>
+  </div>
+</div>
+
+<!-- SCREEN: Verify email -->
+<div class="screen" id="screenVerify">
+  <div class="container" style="max-width:480px;">
+    <div class="hero-panel" style="padding:24px 22px;">
+      <div class="hero-kicker">Respondent Workspace</div>
+      <div class="hero-title" style="font-size:28px;">Review, defend, and resolve with clarity.</div>
+      <div class="hero-copy" style="font-size:13px;">
+        Understand the legal position, submit your side of the story, request proof, and respond to settlement terms from one guided portal.
+      </div>
+    </div>
+    <div class="card" style="margin-top:32px;">
+      <div class="card-title">Verify Your Identity</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+        Enter the email address where you received the dispute invitation.
+      </p>
+      <div class="form-group">
+        <label>Your Email</label>
+        <input type="email" id="verifyEmail" placeholder="your@email.com">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="verifyEmail()">
+        View Case →
+      </button>
+      <div id="verifyError" class="alert alert-error hidden" style="margin-top:12px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: Case view -->
+<div class="screen" id="screenCase">
+  <div class="container">
+    <div class="hero-panel">
+      <div class="hero-kicker">Formal Dispute Notice</div>
+      <div class="hero-title">Respond deliberately before this reaches court.</div>
+      <div class="hero-copy">
+        This portal shows the dispute summary, legal context, proof exchange, and negotiation steps so you can respond in a structured and credible way.
+      </div>
+    </div>
+
+    <!-- Warning banner -->
+    <div class="alert alert-warn" style="margin-bottom:20px;">
+      <b>You have received a formal legal dispute notice.</b>
+      Please review carefully and respond within the deadline.
+    </div>
+
+    <!-- Case summary -->
+    <div class="card" id="caseSummaryCard">
+      <div class="card-title">Dispute Summary</div>
+      <div id="caseSummaryContent"></div>
+    </div>
+
+    <!-- Legal context -->
+    <div class="card" id="legalCard">
+      <div class="card-title">Legal Context</div>
+      <div id="legalContent"></div>
+    </div>
+
+    <!-- Action panel -->
+    <div id="actionPanel"></div>
+
+  </div>
+</div>
+
+<!-- SCREEN: Success -->
+<div class="screen" id="screenSuccess">
+  <div class="container" style="max-width:480px;">
+    <div class="card" style="margin-top:32px;text-align:center;padding:40px;">
+      <div style="font-size:48px;margin-bottom:16px;" id="successIcon">✅</div>
+      <h2 style="color:var(--navy);margin-bottom:8px;" id="successTitle">Done</h2>
+      <p style="color:var(--muted);font-size:14px;" id="successMsg"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const API     = '';
+const caseId  = window.location.pathname.split('/respond/')[1]?.split('/')[0];
+let respondentEmail = '';
+let caseData  = null;
+
+// ── Init ─────────────────────────────────────────────────────
+window.onload = async () => {
+  if (!caseId) {
+    showScreen('screenVerify');
+    return;
+  }
+  // Try to auto-load — will fail without email, show verify screen
+  showScreen('screenVerify');
+};
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Email verification ────────────────────────────────────────
+async function verifyEmail() {
+  const email = document.getElementById('verifyEmail').value.trim();
+  if (!email) return;
+
+  try {
+    const r = await axios.get(
+      `${API}/api/respondent/case/${caseId}?email=${encodeURIComponent(email)}`
+    );
+    respondentEmail = email;
+    caseData        = r.data;
+    renderCase();
+    showScreen('screenCase');
+  } catch(e) {
+    const el = document.getElementById('verifyError');
+    el.textContent = e.response?.data?.detail || 'Email does not match our records.';
+    el.classList.remove('hidden');
+  }
+}
+
+// ── Render case ───────────────────────────────────────────────
+function renderCase() {
+  const c  = caseData.case        || {};
+  const ds = caseData.dispute_summary || {};
+  const ls = caseData.legal_summary   || {};
+  const ng = caseData.negotiation     || {};
+
+  // Case summary
+  document.getElementById('caseSummaryContent').innerHTML = `
+    <div class="kv-row">
+      <span class="kv-key">Case Reference</span>
+      <span class="kv-val" style="font-family:monospace;">${caseId.slice(0,8).toUpperCase()}</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">Filed by</span>
+      <span class="kv-val">${c.claimant_name || '—'}</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">Dispute Type</span>
+      <span class="kv-val">${ds.dispute_type || '—'}</span>
+    </div>
+    <div class="kv-row">
+      <span class="kv-key">Claim Amount</span>
+      <span class="kv-val" style="color:var(--red);">
+        ${ds.claim_amount ? 'Rs. ' + Number(ds.claim_amount).toLocaleString('en-IN') : 'Non-monetary'}
+      </span>
+    </div>
+    <div class="kv-row" style="border:none;">
+      <span class="kv-key">Severity</span>
+      <span class="kv-val">${ds.severity || '—'}</span>
+    </div>
+    <div style="margin-top:14px;">
+      <div class="section-title">Dispute Description</div>
+      <div style="background:var(--lgrey);padding:12px;border-radius:8px;
+                  font-size:13px;line-height:1.6;margin-top:6px;">
+        ${c.dispute_text || ''}
+      </div>
+    </div>
+    ${(ds.key_issues||[]).length > 0 ? `
+      <div style="margin-top:12px;">
+        <div class="section-title">Key Issues</div>
+        ${ds.key_issues.map(i => `<div style="font-size:13px;padding:3px 0;color:var(--dark);">• ${i}</div>`).join('')}
+      </div>
+    ` : ''}
+  `;
+
+  // Legal context
+  document.getElementById('legalContent').innerHTML = `
+    <div class="kv-row">
+      <span class="kv-key">Applicable Laws</span>
+      <span class="kv-val">${ls.applicable_laws_count || 0} statutes identified</span>
+    </div>
+    <div class="kv-row" style="border:none;">
+      <span class="kv-key">Forum if Escalated</span>
+      <span class="kv-val">${ls.forum || '—'}</span>
+    </div>
+    ${(ls.respondent_defenses||[]).length > 0 ? `
+      <div style="margin-top:12px;">
+        <div class="section-title">Your Likely Defenses</div>
+        ${ls.respondent_defenses.map(d =>
+          `<div style="font-size:13px;padding:3px 0;color:var(--green);">✓ ${d}</div>`
+        ).join('')}
+      </div>
+    ` : ''}
+    <div class="alert alert-info" style="margin-top:14px;">
+      <b>Note:</b> The claimant's win probability and settlement range
+      are confidential and not shown to respondents.
+    </div>
+    <div style="margin-top:12px;">
+      <div class="section-title">What Helps The Claimant</div>
+      ${(caseData.insights?.what_helps_claimant || []).map(d =>
+        `<div style="font-size:13px;padding:3px 0;color:var(--dark);">• ${d}</div>`
+      ).join('') || '<div style="font-size:13px;color:var(--muted);">No key strengths highlighted yet.</div>'}
+    </div>
+    <div style="margin-top:12px;">
+      <div class="section-title">Missing Proof / Gaps</div>
+      ${(caseData.insights?.missing_proof || []).map(d =>
+        `<div style="font-size:13px;padding:3px 0;color:var(--gold);">• ${d}</div>`
+      ).join('') || '<div style="font-size:13px;color:var(--muted);">No urgent proof gaps highlighted yet.</div>'}
+    </div>
+  `;
+
+  document.getElementById('legalContent').innerHTML += `
+    <div style="margin-top:12px;">
+      <div class="section-title">Court vs Settlement</div>
+      <div style="font-size:13px;color:var(--dark);line-height:1.6;">${caseData.cost_summary?.cost_comparison || 'A negotiated resolution usually avoids the cost and delay of court.'}</div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="section-title">Live Agent Reasoning Log</div>
+      ${(caseData.ai_reasoning_log || []).slice().reverse().slice(0, 6).map(entry =>
+        `<div style="padding:8px 10px;border:1px solid #E2E8F0;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.72);"><div style="font-size:12px;font-weight:700;color:var(--navy);">${entry.title}</div><div style="font-size:12px;color:var(--dark);margin-top:4px;">${entry.detail}</div></div>`
+      ).join('') || '<div style="font-size:13px;color:var(--muted);">No reasoning entries yet.</div>'}
+    </div>
+  `;
+
+  // Action panel
+  renderActionPanel(ng, c);
+}
+
+function renderActionPanel(ng, c) {
+  const panel = document.getElementById('actionPanel');
+  const status = caseData.status;
+
+  // Settled or escalated — read only
+  if (['SETTLED','ESCALATED','AUTO_ESCALATED','CRIMINAL_ADVISORY'].includes(status)) {
+    panel.innerHTML = `
+      <div class="card">
+        <div class="alert alert-${status==='SETTLED'?'success':'error'}">
+          This case has been ${status.toLowerCase().replace('_',' ')}.
+        </div>
+        ${c.settlement_url ? `<a class="btn btn-green btn-full" href="${c.settlement_url}" target="_blank" rel="noopener noreferrer">Download Settlement Agreement</a>` : ''}
+      </div>
+    `;
+    return;
+  }
+
+  // Proposal pending response
+  const proofBox = (ng && (ng.proof_requests || []).length > 0) ? `
+    <div class="card">
+      <div class="card-title">Proof Exchange</div>
+      ${(ng.proof_requests || []).filter(p => p.round_number === ng.current_round).map(p => `
+        <div style="border:1px solid #E2E8F0;border-radius:8px;padding:12px;margin-bottom:10px;">
+          <div style="font-size:12px;color:var(--muted);text-transform:uppercase;">${p.requested_by} asked ${p.requested_from}</div>
+          <div style="font-size:13px;font-weight:600;margin-top:4px;">${p.request_text}</div>
+          <div style="font-size:12px;color:${p.status === 'PENDING' ? 'var(--gold)' : 'var(--green)'};margin-top:4px;">${p.status}</div>
+          ${p.response_text ? `<div style="font-size:13px;margin-top:6px;">Response: ${p.response_text}</div>` : ''}
+          ${p.requested_from === 'respondent' && p.status === 'PENDING' ? `
+            <textarea id="proofResponse_${p.id}" style="margin-top:8px;" placeholder="Reply with the proof details, explanation, or why it is unavailable."></textarea>
+            <button class="btn btn-outline" style="margin-top:8px;" onclick="submitProofResponse('${p.id}', ${p.round_number})">Send Proof Response</button>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  if (ng && ng.proposal_pending) {
+      panel.innerHTML = `
+      ${proofBox}
+      <div class="card">
+        <div class="card-title">AI Settlement Proposal — Round ${ng.current_round}</div>
+        <div class="proposal-box">
+          <div class="proposal-label">Proposed Settlement</div>
+          <div class="proposal-amount">
+            Rs. ${Number(ng.ai_proposed_amount||0).toLocaleString('en-IN')}
+          </div>
+        </div>
+        ${ng.ai_reasoning ? `
+          <div class="reasoning-box">
+            <p><b style="color:#93C5FD;">AI Mediator Reasoning:</b> ${ng.ai_reasoning}</p>
+          </div>
+        ` : ''}
+        ${ng.ai_reasoning_breakdown ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="card" style="padding:14px;margin:0;background:rgba(255,255,255,0.72);">
+              <div class="section-title">Amount Logic</div>
+              <div style="font-size:13px;line-height:1.6;">${ng.ai_reasoning_breakdown.amount_logic || '—'}</div>
+            </div>
+            <div class="card" style="padding:14px;margin:0;background:rgba(255,255,255,0.72);">
+              <div class="section-title">Evidence Weight</div>
+              <div style="font-size:13px;line-height:1.6;">${ng.ai_reasoning_breakdown.evidence_weight || '—'}</div>
+            </div>
+          </div>
+          <div class="card" style="padding:14px;margin-top:12px;background:rgba(255,255,255,0.72);">
+            <div class="section-title">Mediator Reasoning Log</div>
+            ${(ng.ai_reasoning_log || []).map(step => `<div style="font-size:13px;padding:3px 0;">â€¢ ${step}</div>`).join('') || '<div style="font-size:13px;color:var(--muted);">No detailed mediator log yet.</div>'}
+          </div>
+        ` : ''}
+        <div style="display:flex;gap:12px;margin-top:16px;">
+          <button class="btn btn-green" style="flex:1;"
+            onclick="submitDecision('ACCEPT')">
+            ✓ Accept Proposal
+          </button>
+          <button class="btn btn-red" style="flex:1;"
+            onclick="submitDecision('REJECT')">
+            ✗ Reject
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (ng && ng.current_waiting_on === 'respondent' && ng.claimant_submitted_this_round) {
+      panel.innerHTML = `
+      ${proofBox}
+      <div class="card">
+        <div class="alert alert-info">
+          Round ${ng.current_round || 1} has already started because the claimant submitted the first offer.
+          Your offer is now required. Once you submit, the AI mediator will review both offers and issue a proposal.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Your Response Options</div>
+
+        <div style="border:1.5px solid var(--green);border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="font-weight:700;color:var(--green);margin-bottom:6px;">
+            Option 1: Accept in Full
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+            Agree to pay the full claimed amount of
+            Rs. ${Number(c.claim_amount||0).toLocaleString('en-IN')}.
+            This immediately resolves the dispute.
+          </p>
+          <button class="btn btn-green" onclick="acceptInFull()">
+            Accept Full Amount →
+          </button>
+        </div>
+
+        <div style="border:1.5px solid var(--cyan);border-radius:8px;padding:16px;margin-bottom:12px;">
+          <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">
+            Option 2: Submit Counter-Offer (Round ${ng.current_round || 1})
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+            Enter the amount you are willing to pay. This is still Round ${ng.current_round || 1}, not a later round.
+          </p>
+          <div class="form-group">
+            <label>Your offer amount (Rs.)</label>
+            <input type="number" id="respondentOffer" placeholder="e.g. 20000">
+          </div>
+          <div class="form-group">
+            <label>Explain your position</label>
+            <textarea id="respondentExplanation" rows="4" placeholder="Explain why your amount or conditions are fair."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Proof / evidence note</label>
+            <textarea id="respondentProofNote" rows="3" placeholder="Mention receipts, invoices, messages, photos, or missing proof."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Ask claimant for proof</label>
+            <input type="text" id="respondentRequestedProof" placeholder="Comma-separated, e.g. move-out photos, payment receipt, invoice copy">
+          </div>
+          <div class="form-group">
+            <label>Upload supporting evidence</label>
+            <input type="file" id="respondentEvidenceUpload">
+          </div>
+          <button class="btn btn-primary" onclick="submitOffer()">
+            Submit Offer →
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Already submitted this round
+  if (ng && ng.respondent_submitted_this_round && ng.current_waiting_on !== 'respondent') {
+      panel.innerHTML = `
+      ${proofBox}
+      <div class="card">
+        <div class="alert alert-success">
+          Your offer has been submitted for Round ${ng.current_round}.
+          This round started with the first submitted offer and is now waiting for the claimant to submit their side.
+          The AI Mediator will generate a proposal once both offers are received.
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Submit offer form
+  const roundNum = ng?.current_round || 1;
+  panel.innerHTML = `
+    ${proofBox}
+    <div class="card">
+      <div class="card-title">Your Response Options</div>
+
+      <!-- Option 1: Accept in full -->
+      <div style="border:1.5px solid var(--green);border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:var(--green);margin-bottom:6px;">
+          Option 1: Accept in Full
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+          Agree to pay the full claimed amount of
+          Rs. ${Number(c.claim_amount||0).toLocaleString('en-IN')}.
+          This immediately resolves the dispute.
+        </p>
+        <button class="btn btn-green" onclick="acceptInFull()">
+          Accept Full Amount →
+        </button>
+      </div>
+
+      <!-- Option 2: Counter-offer -->
+      <div style="border:1.5px solid var(--cyan);border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">
+          Option 2: Submit Counter-Offer (Round ${roundNum})
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+          Enter the amount you are willing to pay.
+          The AI Mediator will analyze both offers and propose a fair settlement.
+        </p>
+        <div class="form-group">
+          <label>Your offer amount (Rs.)</label>
+          <input type="number" id="respondentOffer" placeholder="e.g. 20000">
+        </div>
+        <div class="form-group">
+          <label>Explain your position</label>
+          <textarea id="respondentExplanation" rows="4" placeholder="Explain why your amount or conditions are fair."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Proof / evidence note</label>
+          <textarea id="respondentProofNote" rows="3" placeholder="Mention receipts, invoices, messages, photos, or missing proof."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Ask claimant for proof</label>
+          <input type="text" id="respondentRequestedProof" placeholder="Comma-separated, e.g. move-out photos, payment receipt, invoice copy">
+        </div>
+        <div class="form-group">
+          <label>Upload supporting evidence</label>
+          <input type="file" id="respondentEvidenceUpload">
+        </div>
+        <button class="btn btn-primary" onclick="submitOffer()">
+          Submit Offer →
+        </button>
+      </div>
+
+      <!-- Option 3: Dispute facts -->
+      <div style="border:1.5px solid #E2E8F0;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">
+          Option 3: Dispute the Facts
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+          Add your version of events. This is recorded and included in the case file
+          if the matter goes to court.
+        </p>
+        <textarea id="respondentVersion" rows="4"
+          placeholder="Describe your version of events..."></textarea>
+        <button class="btn btn-outline" style="margin-top:8px;" onclick="disputeFacts()">
+          Submit Your Version
+        </button>
+      </div>
+
+      <!-- Option 4: Decline -->
+      <div style="border:1.5px solid var(--red);border-radius:8px;padding:16px;">
+        <div style="font-weight:700;color:var(--red);margin-bottom:6px;">
+          Option 4: Decline to Participate
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+          If you decline, the case will be automatically escalated.
+          A court-ready file noting your non-participation will be generated.
+          The claimant may use this as evidence of bad faith in court.
+        </p>
+        <button class="btn btn-red" onclick="decline()">
+          Decline Participation
+        </button>
+      </div>
+
+      <div id="actionMsg" class="alert hidden" style="margin-top:12px;"></div>
+    </div>
+  `;
+}
+
+// ── Actions ───────────────────────────────────────────────────
+async function submitOffer() {
+  const amt = document.getElementById('respondentOffer')?.value;
+  if (!amt) return alert('Enter your offer amount.');
+  const roundNum = caseData?.negotiation?.current_round || 1;
+  const explanation = document.getElementById('respondentExplanation')?.value.trim() || '';
+  const proofNote = document.getElementById('respondentProofNote')?.value.trim() || '';
+  let uploadedEvidenceUrl = '';
+  const evidenceFile = document.getElementById('respondentEvidenceUpload')?.files?.[0];
+  if (evidenceFile) {
+    const uploaded = await uploadRespondentEvidence(evidenceFile);
+    uploadedEvidenceUrl = uploaded?.url || '';
+  }
+  const requestedProof = (document.getElementById('respondentRequestedProof')?.value || '')
+    .split(',')
+    .map(x => x.trim())
+    .filter(Boolean);
+  try {
+    await axios.post(`${API}/api/negotiation/submit-respondent-offer`, {
+      case_id:      caseId,
+      round_number: roundNum,
+      offer_amount: Number(amt),
+      explanation: explanation,
+      proof_note: uploadedEvidenceUrl ? `${proofNote}\nUploaded evidence: ${uploadedEvidenceUrl}`.trim() : proofNote,
+      requested_proof: requestedProof,
+    });
+    showSuccess('Offer Submitted', `Your offer has been recorded for Round ${roundNum}. The AI Mediator will generate a settlement proposal once both offers are received.`);
+  } catch(e) {
+    alert(
+      e.response?.data?.detail
+      || e.response?.data?.message
+      || e.message
+      || 'Failed to submit offer.'
+    );
+  }
+}
+
+async function acceptInFull() {
+  if (!confirm('Are you sure you want to accept the full claimed amount?')) return;
+  try {
+    await axios.post(`${API}/api/respondent/accept-in-full`, {
+      case_id: caseId, email: respondentEmail
+    });
+    showSuccess('Accepted', 'You have accepted the full amount. A settlement agreement will be generated and emailed to both parties.');
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to accept.');
+  }
+}
+
+async function submitDecision(decision) {
+  try {
+    const response = await axios.post(`${API}/api/respondent/proposal-response`, {
+      case_id: caseId, email: respondentEmail, decision,
+      reason: decision === 'REJECT' ? prompt('Optional: why are you rejecting? Mention missing proof if relevant.') || '' : ''
+    });
+    if (response.data?.outcome === 'SETTLED' || response.data?.status === 'SETTLED') {
+      showSuccess('Accepted', 'The case is now settled and the agreement is ready.');
+      return;
+    }
+    if (response.data?.outcome === 'NEXT_ROUND') {
+      alert(response.data?.message || `Round ${response.data?.next_round || 2} is now open.`);
+      await refreshRespondentCase();
+      return;
+    }
+    if (response.data?.outcome === 'PROOF_REQUESTED') {
+      alert(response.data?.message || 'The case has moved to proof exchange.');
+      await refreshRespondentCase();
+      return;
+    }
+    if (response.data?.outcome === 'ESCALATED') {
+      showSuccess('Escalated', response.data?.message || 'The case has been escalated.');
+      return;
+    }
+    alert(
+      decision === 'ACCEPT'
+        ? 'You accepted the proposal. Waiting for the claimant.'
+        : 'Your decision was recorded.'
+    );
+    await refreshRespondentCase();
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to submit decision.');
+  }
+}
+
+async function refreshRespondentCase() {
+  const r = await axios.get(
+    `${API}/api/respondent/case/${caseId}?email=${encodeURIComponent(respondentEmail)}`
+  );
+  caseData = r.data;
+  renderCase();
+  showScreen('screenCase');
+}
+
+async function disputeFacts() {
+  const version = document.getElementById('respondentVersion')?.value.trim();
+  if (!version) return alert('Please describe your version of events.');
+  try {
+    await axios.post(`${API}/api/respondent/dispute-facts`, {
+      case_id: caseId, email: respondentEmail, counter_claim: version
+    });
+    const el = document.getElementById('actionMsg');
+    el.className = 'alert alert-success';
+    el.textContent = 'Your version has been recorded and will be included in the case file.';
+    el.classList.remove('hidden');
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to submit.');
+  }
+}
+
+async function submitProofResponse(requestId, roundNumber) {
+  const text = document.getElementById(`proofResponse_${requestId}`)?.value.trim();
+  if (!text) return alert('Please enter your proof response.');
+  try {
+    await axios.post(`${API}/api/respondent/proof-response`, {
+      case_id: caseId,
+      email: respondentEmail,
+      round_number: roundNumber,
+      request_id: requestId,
+      response_text: text
+    });
+    showSuccess('Proof Shared', 'Your proof response has been shared with the claimant.');
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to submit proof response.');
+  }
+}
+
+async function uploadRespondentEvidence(file) {
+  const toBase64 = f => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(f);
+  });
+
+  try {
+    const base64Data = await toBase64(file);
+    const r = await axios.post(`${API}/api/respondent/evidence-upload`, {
+      case_id: caseId,
+      email: respondentEmail,
+      filename: file.name,
+      content_type: file.type || 'application/octet-stream',
+      base64_data: base64Data,
+    });
+    return r.data;
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Failed to upload respondent evidence.');
+    return null;
+  }
+}
+
+async function decline() {
+  if (!confirm('Are you sure? Non-participation will be noted in the court file as evidence of bad faith.')) return;
+  try {
+    await axios.post(`${API}/api/respondent/decline`, {
+      case_id: caseId, email: respondentEmail
+    });
+    showSuccess('Declined', 'Your decision has been recorded. The claimant has been notified and a court-ready case file has been generated noting your non-participation.');
+  } catch(e) {
+    alert(e.response?.data?.detail || 'Failed to submit.');
+  }
+}
+
+function showSuccess(title, msg) {
+  document.getElementById('successTitle').textContent = title;
+  document.getElementById('successMsg').textContent   = msg;
+  showScreen('screenSuccess');
+}
+</script>
+</body>
+</html>
